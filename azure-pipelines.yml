@@ -1,6 +1,12 @@
 trigger:
 - master
 
+variables:
+  # Primary virtual environment used for poetry.
+  # Also made available to .ci/scripts/python.py to resolve to the correct
+  #  Python.
+  venv: .poetry
+
 jobs:
 
 - job: Pipeline
@@ -28,11 +34,11 @@ jobs:
     inputs:
       # TODO: Python version for each artifact?
       keyfile: 'poetry.lock'
-      targetfolder: '.venv, .poetry'
+      targetfolder: '.venv, $(venv)'
       vstsFeed: '$(CacheArtifactFeedId)'
 
     # venv is idempotent - no issues if cache has been restored
-  - script: python -m venv .poetry
+  - script: python -m venv $(venv)
     displayName: Make Poetry venv
 
   - task: PythonScript@0
@@ -40,32 +46,24 @@ jobs:
     inputs:
       scriptPath: .ci/scripts/python.py
       arguments: -m pip install --upgrade pip
-    env:
-      VENV: .poetry
 
   - task: PythonScript@0
     displayName: Setup Poetry 2
     inputs:
       scriptPath: .ci/scripts/python.py
       arguments: -m pip install --upgrade poetry
-    env:
-      VENV: .poetry
 
   - task: PythonScript@0
     displayName: Configure Poetry 1
     inputs:
       scriptPath: .ci/scripts/python.py
       arguments: -m poetry config settings.virtualenvs.in-project true
-    env:
-      VENV: .poetry
 
   - task: PythonScript@0
     displayName: Configure Poetry 2
     inputs:
       scriptPath: .ci/scripts/python.py
       arguments: -m poetry config settings.virtualenvs.path .venv
-    env:
-      VENV: .poetry
 
     # Letting Python install the virtual environment works around an issue
     # seen where ensurepip fails when poetry executes the installation.
@@ -77,15 +75,13 @@ jobs:
     inputs:
       scriptPath: .ci/scripts/python.py
       arguments: -m poetry install
-    env:
-      VENV: .poetry
 
     # If dependency resolution succeeded, cache.
   - task: 1ESLighthouseEng.PipelineArtifactCaching.SaveCacheV1.SaveCache@1
     displayName: 'PyPI Cache Save'
     inputs:
       keyfile: 'poetry.lock'
-      targetfolder: '.venv, .poetry'
+      targetfolder: '.venv, $(venv)'
       vstsFeed: '$(CacheArtifactFeedId)'
 
   - task: PythonScript@0
