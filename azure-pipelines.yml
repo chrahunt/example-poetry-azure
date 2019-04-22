@@ -23,34 +23,62 @@ jobs:
       versionSpec: '$(python.version)'
       architecture: 'x64'
 
-  - task: 1ESLighthouseEng.PipelineArtifactCaching.RestoreCacheV1.RestoreCache@1
+  - displayName: 'PyPI Cache Restore'
+    task: 1ESLighthouseEng.PipelineArtifactCaching.RestoreCacheV1.RestoreCache@1
     inputs:
+      # TODO: Python version for each artifact?
       keyfile: 'poetry.lock'
       targetfolder: '.venv, .poetry'
       vstsFeed: '$(CacheArtifactFeedId)'
-    displayName: 'PyPI Cache Restore'
 
-  - bash: |
-      # venv is idempotent - no issues if cache has been restored
-      python -m venv .poetry
-      .poetry/bin/python -m pip install --upgrade pip
-      .poetry/bin/python -m pip install --upgrade poetry
-      .poetry/bin/python -m poetry config settings.virtualenvs.in-project true
-      .poetry/bin/python -m poetry config settings.virtualenvs.path .venv
-    displayName: 'Poetry setup'
+  - displayName: Make Poetry venv
+    # venv is idempotent - no issues if cache has been restored
+    script: python -m venv .poetry
 
-  - bash: |
-      # Letting Python install the virtual environment works around an issue
-      # seen where ensurepip fails when poetry executes the installation.
-      python -m venv .venv
-      strace -yttfo strace.poetry.log -s 256 .poetry/bin/python -m poetry install -vvvv
-    displayName: 'Install/update dependencies'
-    condition: eq( variables['Agent.OS'], 'Linux' )
+  - displayName: Setup Poetry 1
+    task: PythonScript@0
+    inputs:
+      scriptPath: .ci/scripts/python.py
+      arguments: -m pip install --upgrade pip
+    env:
+      VENV: .poetry
 
-  - bash: |
-      .poetry/bin/python -m poetry install -vvvv
-    displayName: 'Install/update dependencies'
-    condition: eq( variables['Agent.OS'], 'Windows_NT' )
+  - displayName: Setup Poetry 2
+    task: PythonScript@0
+    inputs:
+      scriptPath: .ci/scripts/python.py
+      arguments: -m pip install --upgrade poetry
+    env:
+      VENV: .poetry
+
+  - displayName: Configure Poetry 1
+    task: PythonScript@0
+    inputs:
+      scriptPath: .ci/scripts/python.py
+      arguments: -m poetry config settings.virtualenvs.in-project true
+    env:
+      VENV: .poetry
+
+  - displayName: Configure Poetry 2
+    task: PythonScript@0
+    inputs:
+      scriptPath: .ci/scripts/python.py
+      arguments: -m poetry config settings.virtualenvs.path .venv
+    env:
+      VENV: .poetry
+
+  - displayName: Make app venv
+    # Letting Python install the virtual environment works around an issue
+    # seen where ensurepip fails when poetry executes the installation.
+    script: python -m venv .venv
+
+  - displayName: Install/update dependencies
+    task: PythonScript@0
+    inputs:
+      scriptPath: .ci/scripts/python.py
+      arguments: -m poetry install
+    env:
+      VENV: .poetry
 
     # If dependency resolution succeeded, cache.
   - task: 1ESLighthouseEng.PipelineArtifactCaching.SaveCacheV1.SaveCache@1
