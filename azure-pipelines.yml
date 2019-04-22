@@ -31,6 +31,7 @@ jobs:
     displayName: 'PyPI Cache Restore'
 
   - bash: |
+      # venv is idempotent - no issues if cache has been restored
       python -m venv .poetry
       .poetry/bin/python -m pip install --upgrade pip
       .poetry/bin/python -m pip install --upgrade poetry
@@ -39,13 +40,15 @@ jobs:
     displayName: 'Poetry setup'
 
   - bash: |
-      env | sort
-      strace -yttfo strace.poetry.log -s 256 .poetry/bin/python -m poetry install
+      # Letting Python install the virtual environment works around an issue
+      # seen where ensurepip fails when poetry executes the installation.
+      python -m venv .venv
+      strace -yttfo strace.poetry.log -s 256 .poetry/bin/python -m poetry install -vvvv
     displayName: 'Install/update dependencies'
     condition: eq( variables['Agent.OS'], 'Linux' )
 
   - bash: |
-      .poetry/bin/python -m poetry install
+      .poetry/bin/python -m poetry install -vvvv
     displayName: 'Install/update dependencies'
     condition: eq( variables['Agent.OS'], 'Windows_NT' )
 
