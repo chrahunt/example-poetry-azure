@@ -30,20 +30,21 @@ jobs:
       vstsFeed: '$(CacheArtifactFeedId)'
     displayName: 'PyPI Cache Restore'
 
-  - script: |
+  - bash: |
       python -m venv .poetry
-      ./.poetry/bin/python -m pip install --upgrade pip
-      ./.poetry/bin/python -m pip install --upgrade poetry
-      ./.poetry/bin/python -m poetry config settings.virtualenvs.in-project true
-      ./.poetry/bin/python -m poetry config settings.virtualenvs.path .venv
+      .poetry/bin/python -m pip install --upgrade pip
+      .poetry/bin/python -m pip install --upgrade poetry
+      .poetry/bin/python -m poetry config settings.virtualenvs.in-project true
+      .poetry/bin/python -m poetry config settings.virtualenvs.path .venv
     displayName: 'Poetry setup'
 
-  - script: |
-      strace -yttfo strace.poetry.log .poetry/bin/python -m poetry install
+  - bash: |
+      env | sort
+      strace -yttfo strace.poetry.log -s 256 .poetry/bin/python -m poetry install
     displayName: 'Install/update dependencies'
     condition: eq( variables['Agent.OS'], 'Linux' )
 
-  - script: |
+  - bash: |
       .poetry/bin/python -m poetry install
     displayName: 'Install/update dependencies'
     condition: eq( variables['Agent.OS'], 'Windows_NT' )
@@ -63,6 +64,6 @@ jobs:
     condition: succeededOrFailed()
     displayName: Debug
 
-  - script: |
+  - bash: |
       .poetry/bin/python -m poetry run pytest -s -ra --junitxml=junit/test-results.xml tests
     displayName: Run tests
