@@ -18,7 +18,7 @@ def get_python_path(venv: Path):
         'Linux': Path('bin') / 'python',
         'Windows_NT': Path('Scripts') / 'python.exe',
     }
-    return python_paths[os.environ['AGENT_OS']]
+    return venv / python_paths[os.environ['AGENT_OS']]
 
 
 if __name__ == '__main__':
