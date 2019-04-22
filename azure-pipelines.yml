@@ -32,15 +32,21 @@ jobs:
 
   - script: |
       python -m venv .poetry
-      .poetry/bin/python -m pip install --upgrade pip
-      .poetry/bin/python -m pip install --upgrade poetry
-      .poetry/bin/python -m poetry config settings.virtualenvs.in-project true
-      .poetry/bin/python -m poetry config settings.virtualenvs.path .venv
+      ./.poetry/bin/python -m pip install --upgrade pip
+      ./.poetry/bin/python -m pip install --upgrade poetry
+      ./.poetry/bin/python -m poetry config settings.virtualenvs.in-project true
+      ./.poetry/bin/python -m poetry config settings.virtualenvs.path .venv
     displayName: 'Poetry setup'
+
+  - script: |
+      strace -yttfo strace.poetry.log .poetry/bin/python -m poetry install
+    displayName: 'Install/update dependencies'
+    condition: eq( variables['Agent.OS'], 'Linux' )
 
   - script: |
       .poetry/bin/python -m poetry install
     displayName: 'Install/update dependencies'
+    condition: eq( variables['Agent.OS'], 'Windows_NT' )
 
     # If dependency resolution succeeded, cache.
   - task: 1ESLighthouseEng.PipelineArtifactCaching.SaveCacheV1.SaveCache@1
@@ -49,6 +55,13 @@ jobs:
       targetfolder: '.venv, .poetry'
       vstsFeed: '$(CacheArtifactFeedId)'
     displayName: 'PyPI Cache Save'
+
+  - task: PublishPipelineArtifact@0
+    inputs:
+      artifactName: 'debug_$(python.version)_$(Agent.OS)'
+      targetPath: strace.poetry.log
+    condition: succeededOrFailed()
+    displayName: Debug
 
   - script: |
       .poetry/bin/python -m poetry run pytest -s -ra --junitxml=junit/test-results.xml tests
