@@ -23,57 +23,57 @@ jobs:
       versionSpec: '$(python.version)'
       architecture: 'x64'
 
-  - displayName: 'PyPI Cache Restore'
-    task: 1ESLighthouseEng.PipelineArtifactCaching.RestoreCacheV1.RestoreCache@1
+  - task: 1ESLighthouseEng.PipelineArtifactCaching.RestoreCacheV1.RestoreCache@1
+    displayName: 'PyPI Cache Restore'
     inputs:
       # TODO: Python version for each artifact?
       keyfile: 'poetry.lock'
       targetfolder: '.venv, .poetry'
       vstsFeed: '$(CacheArtifactFeedId)'
 
-  - displayName: Make Poetry venv
     # venv is idempotent - no issues if cache has been restored
-    script: python -m venv .poetry
+  - script: python -m venv .poetry
+    displayName: Make Poetry venv
 
-  - displayName: Setup Poetry 1
-    task: PythonScript@0
+  - task: PythonScript@0
+    displayName: Setup Poetry 1
     inputs:
       scriptPath: .ci/scripts/python.py
       arguments: -m pip install --upgrade pip
     env:
       VENV: .poetry
 
-  - displayName: Setup Poetry 2
-    task: PythonScript@0
+  - task: PythonScript@0
+    displayName: Setup Poetry 2
     inputs:
       scriptPath: .ci/scripts/python.py
       arguments: -m pip install --upgrade poetry
     env:
       VENV: .poetry
 
-  - displayName: Configure Poetry 1
-    task: PythonScript@0
+  - task: PythonScript@0
+    displayName: Configure Poetry 1
     inputs:
       scriptPath: .ci/scripts/python.py
       arguments: -m poetry config settings.virtualenvs.in-project true
     env:
       VENV: .poetry
 
-  - displayName: Configure Poetry 2
-    task: PythonScript@0
+  - task: PythonScript@0
+    displayName: Configure Poetry 2
     inputs:
       scriptPath: .ci/scripts/python.py
       arguments: -m poetry config settings.virtualenvs.path .venv
     env:
       VENV: .poetry
 
-  - displayName: Make app venv
     # Letting Python install the virtual environment works around an issue
     # seen where ensurepip fails when poetry executes the installation.
-    script: python -m venv .venv
+  - script: python -m venv .venv
+    displayName: Make app venv
 
-  - displayName: Install/update dependencies
-    task: PythonScript@0
+  - task: PythonScript@0
+    displayName: Install/update dependencies
     inputs:
       scriptPath: .ci/scripts/python.py
       arguments: -m poetry install
@@ -82,19 +82,21 @@ jobs:
 
     # If dependency resolution succeeded, cache.
   - task: 1ESLighthouseEng.PipelineArtifactCaching.SaveCacheV1.SaveCache@1
+    displayName: 'PyPI Cache Save'
     inputs:
       keyfile: 'poetry.lock'
       targetfolder: '.venv, .poetry'
       vstsFeed: '$(CacheArtifactFeedId)'
-    displayName: 'PyPI Cache Save'
 
   - task: PublishPipelineArtifact@0
+    displayName: Debug
     inputs:
       artifactName: 'debug_$(python.version)_$(Agent.OS)'
       targetPath: strace.poetry.log
     condition: succeededOrFailed()
-    displayName: Debug
 
-  - bash: |
-      .poetry/bin/python -m poetry run pytest -s -ra --junitxml=junit/test-results.xml tests
-    displayName: Run tests
+  - task: PythonScript@0
+    displayName: Test
+    inputs:
+      scriptPath: .ci/scripts/python.py
+      arguments: -m poetry run pytest -s -ra --junitxml=junit/test-results.xml tests
