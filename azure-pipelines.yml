@@ -3,9 +3,10 @@ trigger:
 
 variables:
   # Primary virtual environment used for poetry.
-  # Also made available to .ci/scripts/python.py to resolve to the correct
+  # Also made available to .ap/scripts/python.py to resolve to the correct
   #  Python.
   venv: .poetry
+  app_venv: .venv
 
 jobs:
 
@@ -24,6 +25,14 @@ jobs:
     vmImage: $(imageName)
 
   steps:
+    # Arbitrary cache key properties.
+  - bash: |
+      echo '
+      python_version=$(python.version)
+      os=$(Agent.OS)
+      ' > buildinfo.txt
+    displayName: 'Create CI properties file'
+
   - task: UsePythonVersion@0
     inputs:
       versionSpec: '$(python.version)'
@@ -32,9 +41,8 @@ jobs:
   - task: 1ESLighthouseEng.PipelineArtifactCaching.RestoreCacheV1.RestoreCache@1
     displayName: 'PyPI Cache Restore'
     inputs:
-      # TODO: Python version for each artifact?
-      keyfile: 'poetry.lock'
-      targetfolder: '.venv, $(venv)'
+      keyfile: 'poetry.lock, buildinfo.txt'
+      targetfolder: '$(app_venv), $(venv)'
       vstsFeed: '$(CacheArtifactFeedId)'
 
     # venv is idempotent - no issues if cache has been restored
@@ -44,48 +52,48 @@ jobs:
   - task: PythonScript@0
     displayName: Setup Poetry 1
     inputs:
-      scriptPath: .ci/scripts/python.py
+      scriptPath: .ap/scripts/python.py
       arguments: -m pip install --upgrade pip
 
   - task: PythonScript@0
     displayName: Setup Poetry 2
     inputs:
-      scriptPath: .ci/scripts/python.py
+      scriptPath: .ap/scripts/python.py
       arguments: -m pip install --upgrade poetry
 
   - task: PythonScript@0
     displayName: Configure Poetry 1
     inputs:
-      scriptPath: .ci/scripts/python.py
+      scriptPath: .ap/scripts/python.py
       arguments: -m poetry config settings.virtualenvs.in-project true
 
   - task: PythonScript@0
     displayName: Configure Poetry 2
     inputs:
-      scriptPath: .ci/scripts/python.py
-      arguments: -m poetry config settings.virtualenvs.path .venv
+      scriptPath: .ap/scripts/python.py
+      arguments: -m poetry config settings.virtualenvs.path $(app_venv)
 
     # Letting Python install the virtual environment works around an issue
     # seen where ensurepip fails when poetry executes the installation.
-  - script: python -m venv .venv
+  - script: python -m venv $(app_venv)
     displayName: Make app venv
 
   - task: PythonScript@0
     displayName: Install/update dependencies
     inputs:
-      scriptPath: .ci/scripts/python.py
+      scriptPath: .ap/scripts/python.py
       arguments: -m poetry install
 
     # If dependency resolution succeeded, cache.
   - task: 1ESLighthouseEng.PipelineArtifactCaching.SaveCacheV1.SaveCache@1
     displayName: 'PyPI Cache Save'
     inputs:
-      keyfile: 'poetry.lock'
-      targetfolder: '.venv, $(venv)'
+      keyfile: 'poetry.lock, buildinfo.txt'
+      targetfolder: '$(app_venv), $(venv)'
       vstsFeed: '$(CacheArtifactFeedId)'
 
   - task: PythonScript@0
     displayName: Test
     inputs:
-      scriptPath: .ci/scripts/python.py
+      scriptPath: .ap/scripts/python.py
       arguments: -m poetry run pytest -s -ra --junitxml=junit/test-results.xml tests
