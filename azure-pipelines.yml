@@ -88,13 +88,6 @@ jobs:
       targetfolder: '.venv, .poetry'
       vstsFeed: '$(CacheArtifactFeedId)'
 
-  - task: PublishPipelineArtifact@0
-    displayName: Debug
-    inputs:
-      artifactName: 'debug_$(python.version)_$(Agent.OS)'
-      targetPath: strace.poetry.log
-    condition: succeededOrFailed()
-
   - task: PythonScript@0
     displayName: Test
     inputs:
