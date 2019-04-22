@@ -22,7 +22,6 @@ def get_python_path(venv: Path):
 
 
 if __name__ == '__main__':
-    venv_path = sys.argv[1]
     python_path = get_python_path(Path(os.environ['VENV']).absolute())
-    args = [str(python_path), *sys.argv[2:]]
+    args = [str(python_path), *sys.argv[1:]]
     os.execv(python_path, args)
