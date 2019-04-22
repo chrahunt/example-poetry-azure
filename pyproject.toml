@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "azure-example"
+version = "0.1.0"
+description = ""
+authors = ["Chris Hunt <chrahunt@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+homepage = "https://github.com/chrahunt/poetry-azure-example"
+repository = "https://github.com/chrahunt/poetry-azure-example"
+
+[tool.poetry.dependencies]
+python = "^3.7"
+
+[build-system]
+requires = ["poetry>=0.12"]
+build-backend = "poetry.masonry.api"
